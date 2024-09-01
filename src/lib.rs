@@ -77,54 +77,23 @@ pub mod spi;
 /// Abstraction over the different serial links.
 /// Either SPI, I2C or HSU (High Speed UART).
 
-#[cfg(feature = "is_sync")]
+#[allow(async_fn_in_trait)]
+#[maybe_async::maybe_async(AFIT)]
 pub trait Interface {
     /// Error specific to the serial link.
     type Error: Debug;
     /// Writes a `frame` to the Pn532
-    fn write(&mut self, frame: &[u8]) -> Result<(), Self::Error>;
+    async fn write(&mut self, frame: &[u8]) -> Result<(), Self::Error>;
     /// Checks if the Pn532 has data to be read.
     /// Uses either the serial link or the IRQ pin.
+    #[cfg(not(feature = "is_sync"))]
+    async fn wait_ready(&mut self) -> Result<(), Self::Error>;
+    #[cfg(feature = "is_sync")]
     fn wait_ready(&mut self) -> Poll<Result<(), Self::Error>>;
     /// Reads data from the Pn532 into `buf`.
     /// This method will only be called if `wait_ready` returned `Poll::Ready(Ok(()))` before.
-    fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error>;
+    async fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error>;
 }
-
-#[cfg(not(feature = "is_sync"))]
-pub trait Interface {
-    /// Error specific to the serial link.
-    type Error: Debug;
-    /// Writes a `frame` to the Pn532
-    // async fn write(&mut self, frame: &[u8]) -> Result<(), Self::Error>;
-    fn write(&mut self, frame: &[u8]) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-    /// Checks if the Pn532 has data to be read.
-    /// Uses either the serial link or the IRQ pin.
-    // async fn wait_ready(&mut self) -> Result<(), Self::Error>;
-    fn wait_ready(&mut self) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-    /// Reads data from the Pn532 into `buf`.
-    /// This method will only be called if `wait_ready` returned `Poll::Ready(Ok(()))` before.
-    // async fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error>;
-    fn read(&mut self, buf: &mut [u8]) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-}
- 
-// This is how I'd want to define it with maybe_async, but it generates warnings, maybe better to just disable them?
-// #[maybe_async::maybe_async(AFIT)]
-// pub trait Interface {
-//     /// Error specific to the serial link.
-//     type Error: Debug;
-//     /// Writes a `frame` to the Pn532
-//     async fn write(&mut self, frame: &[u8]) -> Result<(), Self::Error>;
-//     /// Checks if the Pn532 has data to be read.
-//     /// Uses either the serial link or the IRQ pin.
-//     #[cfg(not(feature = "is_sync"))]
-//     async fn wait_ready(&mut self) -> Result<(), Self::Error>;
-//     #[cfg(feature = "is_sync")]
-//     fn wait_ready(&mut self) -> Poll<Result<(), Self::Error>>;
-//     /// Reads data from the Pn532 into `buf`.
-//     /// This method will only be called if `wait_ready` returned `Poll::Ready(Ok(()))` before.
-//     async fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error>;
-// }
 
 #[maybe_async::maybe_async(AFIT)]
 impl<I: Interface> Interface for &mut I {
