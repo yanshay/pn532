@@ -77,6 +77,8 @@ where
     }
 
     async fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
+        // TODO: need to pass the N from Protocol generic to here, or add to the interface N as generic because it's a device thing
+        //       until ESP32 multiple read issues are solved
         let mut local_buf = [0u8;32];
         let local_buf_slice = &mut local_buf[..buf.len()+1]; // read one more than buf
         self.i2c.read( I2C_ADDRESS, local_buf_slice).await?;
