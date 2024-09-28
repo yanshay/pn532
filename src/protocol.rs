@@ -39,6 +39,8 @@ pub enum Error<E: Debug> {
     TimeoutResponse,
     /// Interface specific Error
     InterfaceError(E),
+    /// Write timeout w/o interface error (just hanged)
+    TimeoutRequest,
 }
 
 impl<E: Debug> From<E> for Error<E> {
@@ -125,9 +127,6 @@ impl<I: Interface, T: CountDown, const N: usize> Pn532<I, T, N> {
         let sent_command = request.command;
         self.timer.start(timeout);
         self._send(request).await?;
-        // if self.timer.until_timeout(self.interface.wait_ready()).await.is_err() {
-        //     return Err(Error::TimeoutAck);
-        // }
         if self._wait_ready().await.is_err() {
           return Err(Error::TimeoutAck);
         }
@@ -135,9 +134,6 @@ impl<I: Interface, T: CountDown, const N: usize> Pn532<I, T, N> {
         if self._wait_ready().await.is_err() {
           return Err(Error::TimeoutResponse);
         }
-        // if self.timer.until_timeout(self.interface.wait_ready()).await.is_err() {
-        //     return Err(Error::TimeoutResponse);
-        // }
         self.receive_response(sent_command, response_len).await
     }
 
@@ -202,7 +198,7 @@ impl<I: Interface, T: CountDown, const N: usize> Pn532<I, T, N> {
 }
 
 #[maybe_async::maybe_async(AFIT)]
-impl<I: Interface, T, const N: usize> Pn532<I, T, N> {
+impl<I: Interface, T: CountDown, const N: usize> Pn532<I, T, N> {
     /// Create a Pn532 instance
     pub fn new(interface: I, timer: T) -> Self {
         Pn532 {
@@ -252,8 +248,10 @@ impl<I: Interface, T, const N: usize> Pn532<I, T, N> {
         self.buf[7 + data_len] = to_checksum(data_sum);
         self.buf[8 + data_len] = POSTAMBLE;
 
-        self.interface.write(&self.buf[..9 + data_len]).await?;
-        Ok(())
+        match self.timer.until_timeout(self.interface.write(&self.buf[..9 + data_len])).await {
+            Ok(operation_res) => Ok(operation_res?),
+            Err(_) => Err(Error::TimeoutRequest),
+        }
     }
 
     /// Receive an ACK frame.
@@ -273,7 +271,10 @@ impl<I: Interface, T, const N: usize> Pn532<I, T, N> {
     /// ```
     pub async fn receive_ack(&mut self) -> Result<(), Error<I::Error>> {
         let mut ack_buf = [0; 6];
-        self.interface.read(&mut ack_buf).await?;
+        match self.timer.until_timeout(self.interface.read(&mut ack_buf)).await {
+            Ok(operation_res) => operation_res?,
+            Err(_) => return Err(Error::TimeoutResponse),
+        }
         if ack_buf != ACK {
             Err(Error::BadAck)
         } else {
@@ -310,7 +311,10 @@ impl<I: Interface, T, const N: usize> Pn532<I, T, N> {
     ) -> Result<&[u8], Error<I::Error>> {
         let response_buf = &mut self.buf[..response_len + 9];
         response_buf.fill(0); // zero out buf
-        self.interface.read(response_buf).await?;
+        match self.timer.until_timeout(self.interface.read(response_buf)).await {
+            Ok(operation_res) => operation_res?,
+            Err(_) => return Err(Error::TimeoutResponse),
+        }
         let expected_response_command = sent_command as u8 + 1;
         parse_response(response_buf, expected_response_command)
     }
@@ -320,8 +324,10 @@ impl<I: Interface, T, const N: usize> Pn532<I, T, N> {
     /// to the host controller.
     /// Then, the PN532 starts again waiting for a new command.
     pub async fn abort(&mut self) -> Result<(), Error<I::Error>> {
-        self.interface.write(&ACK).await?;
-        Ok(())
+        match self.timer.until_timeout(self.interface.write(&ACK)).await {
+            Ok(operation_res) => Ok(operation_res?),
+            Err(_) => Err(Error::TimeoutRequest),
+        }
     }
 }
 
