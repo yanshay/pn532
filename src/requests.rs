@@ -98,6 +98,26 @@ impl Request<0> {
             ],
         )
     }
+
+    // response size to use: 9 (1 for error/ok + 8 for real response data)
+    pub const fn ntag_get_version() -> Request<1> {
+        Request::new(
+            Command::InCommunicateThru,
+            [
+                NTAGCommand::GetVersion as u8,
+            ],
+        )
+    }
+
+    // response size to use: 0
+    #[allow(non_snake_case)]
+    pub const fn pn532_set_timeout(fATR_RES_Timeout:u8,  fRetryTimeout:u8 ) -> Request<4> {
+        let rf_configuration_timeout_sub_command = 0x02;
+        Request::new(
+            Command::RFConfiguration,
+            [rf_configuration_timeout_sub_command, 0, fATR_RES_Timeout, fRetryTimeout],
+        )
+    }
 }
 
 /// Commands supported by the Pn532
