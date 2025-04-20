@@ -45,6 +45,100 @@ impl Request<0> {
     pub const RELEASE_TAG_1: Request<1> = Request::new(Command::InRelease, [1]);
     pub const RELEASE_TAG_2: Request<1> = Request::new(Command::InRelease, [2]);
 
+    pub fn tg_init_as_target(mode: Option<u8>, short_uid: Option<[u8;3]>) -> Request<37> {
+        let uid = short_uid.unwrap_or([0u8,0,0]);
+        let mode = mode.unwrap_or(0x00);
+
+        Request::new(Command::TgInitAsTarget, [
+                // From pn532 python library
+                mode, 
+                // MIFARE PARAMS
+                0x08, 0x00, 
+                uid[0], uid[1], uid[2], 
+                0x60, 
+
+                // FELICA PARAMS
+                0x01, 0xFE, 
+                0xA2, 0xA3, 0xA4, 
+                0xA5, 0xA6, 0xA7, 
+                0xC0, 0xC1, 
+                0xC2, 0xC3, 0xC4, 
+                0xC5, 0xC6, 0xC7, 
+                0xFF, 0xFF, 
+
+                0xAA, 0x99, 0x88, 
+                0x77, 0x66, 0x55, 0x44, 
+                0x33, 0x22, 0x11, 
+
+                0x00, 
+                0x00
+            ])
+
+    }
+
+    pub const TG_INIT_AS_TARGET1: Request<37> = Request::new(Command::TgInitAsTarget, [
+        // From pn532 python library
+        0x04, 
+        // MIFARE PARAMS
+        0x08, 0x00, 
+        0x11, 0x22, 0x33, 
+        0x60, 
+
+        // FELICA PARAMS
+        0x01, 0xFE, 
+        0xA2, 0xA3, 0xA4, 
+        0xA5, 0xA6, 0xA7, 
+        0xC0, 0xC1, 
+        0xC2, 0xC3, 0xC4, 
+        0xC5, 0xC6, 0xC7, 
+        0xFF, 0xFF, 
+
+        0xAA, 0x99, 0x88, 
+        0x77, 0x66, 0x55, 0x44, 
+        0x33, 0x22, 0x11, 
+
+        0x00, 
+        0x00
+    ]);
+
+    pub const TG_INIT_AS_TARGET2: Request<37> = Request::new(Command::TgInitAsTarget, [
+        // one version from elechouse pn532
+        5,                  // MODE: PICC only, Passive only
+
+        0x04, 0x00,         // SENS_RES
+        0x00, 0x00, 0x00,   // NFCID1
+        0x20,               // SEL_RES
+
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,   // FeliCaParams
+        0,0,
+
+        0,0,0,0,0,0,0,0,0,0, // NFCID3t
+
+        0, // length of general bytes
+        0  // length of historical bytes
+    ]);
+
+    pub const TG_INIT_AS_TARGET3: Request<43> = Request::new(Command::TgInitAsTarget, [
+        // another version from elechouse pn532 (called Peer to Peer, not sure correctly)
+        0,
+        0x00, 0x00,         //SENS_RES
+        0x00, 0x00, 0x00,   //NFCID1
+        0x40,               //SEL_RES
+
+        0x01, 0xFE, 0x0F, 0xBB, 0xBA, 0xA6, 0xC9, 0x89, // POL_RES
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0xFF, 0xFF,
+
+        0x01, 0xFE, 0x0F, 0xBB, 0xBA, 0xA6, 0xC9, 0x89, 0x00, 0x00, //NFCID3t: Change this to desired value
+
+        0x06, 0x46,  0x66, 0x6D, 0x01, 0x01, 0x10, 0x00// LLCP magic number and version parameter
+    ]);
+
+
+    // Response Size:
+    pub const TG_GET_DATA: Request<0> = Request::new(Command::TgGetData, []);
+
     pub const fn sam_configuration(mode: SAMMode, use_irq_pin: bool) -> Request<3> {
         // TODO use_irq_pin seems to not have any effect
         let (mode, timeout) = match mode {
