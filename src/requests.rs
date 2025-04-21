@@ -47,33 +47,25 @@ impl Request<0> {
 
     pub fn tg_init_as_target(mode: Option<u8>, short_uid: Option<[u8;3]>) -> Request<37> {
         let uid = short_uid.unwrap_or([0u8,0,0]);
-        let mode = mode.unwrap_or(0x00);
+        let mode = mode.unwrap_or(0x05);
 
         Request::new(Command::TgInitAsTarget, [
-                // From pn532 python library
-                mode, 
-                // MIFARE PARAMS
-                0x08, 0x00, 
-                uid[0], uid[1], uid[2], 
-                0x60, 
+            // one version from elechouse pn532
+            mode,                     // MODE: PICC only, Passive only
 
-                // FELICA PARAMS
-                0x01, 0xFE, 
-                0xA2, 0xA3, 0xA4, 
-                0xA5, 0xA6, 0xA7, 
-                0xC0, 0xC1, 
-                0xC2, 0xC3, 0xC4, 
-                0xC5, 0xC6, 0xC7, 
-                0xFF, 0xFF, 
+            0x04, 0x00,               // SENS_RES
+            uid[0], uid[1], uid[2],   // NFCID1
+            0x20,                     // SEL_RES
 
-                0xAA, 0x99, 0x88, 
-                0x77, 0x66, 0x55, 0x44, 
-                0x33, 0x22, 0x11, 
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,          // FeliCaParams
+            0,0,
 
-                0x00, 
-                0x00
-            ])
+            0,0,0,0,0,0,0,0,0,0,      // NFCID3t
 
+            0,                        // length of general bytes
+            0                         // length of historical bytes
+        ])
     }
 
     pub const TG_INIT_AS_TARGET1: Request<37> = Request::new(Command::TgInitAsTarget, [
