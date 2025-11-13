@@ -172,6 +172,44 @@ impl Request<0> {
             ],
         )
     }
+
+    pub fn mifare_classic_authenticate_block(uid: &[u8], block_number: u8, key: MifareAuthKey) -> Request<13> {
+        let uid_last_4_bytes = &uid[uid.len()-4..];
+        let (key_type, key_val) = match &key {
+            MifareAuthKey::A(key_val) => (MifareCommand::AuthenticationWithKeyA as u8, key_val),
+            MifareAuthKey::B(key_val) => (MifareCommand::AuthenticationWithKeyB as u8, key_val),
+        };
+        Request::new(
+            Command::InDataExchange,
+            [
+                0x01,
+                key_type,
+                block_number,
+                key_val[0],
+                key_val[1],
+                key_val[2],
+                key_val[3],
+                key_val[4],
+                key_val[5],
+                uid_last_4_bytes[0],
+                uid_last_4_bytes[1],
+                uid_last_4_bytes[2],
+                uid_last_4_bytes[3],
+            ],
+        )
+    }
+
+    pub fn mifare_classic_read_data_block(block_number: u8) -> Request<3> {
+        Request::new(
+            Command::InDataExchange,
+            [
+                0x01,
+                MifareCommand::Read as u8, // TODO: use key a
+                block_number,
+            ],
+        )
+    }
+
     pub const fn ntag_pwd_auth(bytes: &[u8; 4]) -> Request<5> {
         Request::new(
             Command::InCommunicateThru,
@@ -442,4 +480,10 @@ pub enum MifareCommand {
     Increment = 0xC1,
     Restore = 0xC2,
     Transfer = 0xB0,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum MifareAuthKey<'a> {
+    A(&'a [u8;6]),
+    B(&'a [u8;6])
 }
