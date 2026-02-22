@@ -131,7 +131,7 @@ where
     type Error = <SPI as embedded_hal::spi::ErrorType>::Error;
     async fn wake_up(&mut self) -> Result<(), Self::Error> {
         self.spi
-            .transaction(&mut [Operation::DelayNs(10_000_000)])
+            .transaction(&mut [Operation::DelayNs(10_000_000), Operation::Write(&[0u8])])
             .await
     }
 
